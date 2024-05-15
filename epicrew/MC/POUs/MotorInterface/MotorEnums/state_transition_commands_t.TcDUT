@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="state_transition_commands_t" Id="{d09dfb61-40a1-4c2d-8d77-0856c1a88186}">
+    <Declaration><![CDATA[TYPE state_transition_commands_t :
+(
+	Shutdown,
+	SwitchOn,
+	SwitchOnEnOP,
+	DisableVolt,
+	QuickStop,
+	DisableOP,
+	EnableOP,
+	FaultReset
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="ATAND" Id="{4e832d3b-8433-4700-85c6-a7480922608a}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION ATAND : LREAL
+VAR_INPUT
+	TANVAL: LREAL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ATAND:=RAD_TO_DEG(ATAN(TANVAL));]]></ST>
+    </Implementation>
+    <LineIds Name="ATAND">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="HMConfigOut" Id="{7bc9dca1-4d06-4181-9136-e514aaeaf09c}">
+    <Declaration><![CDATA[TYPE HMConfigOut :
+STRUCT
+	// For second axis, please add the index offset 0800h. Thus, for axis 2 the index is 6898h, 6899h and 689Ah.
+	homing_method: SINT; // Link to the PDO object Homing METHOD (6098h)
+	homing_speed: UDINT; // Link to the PDO objects Search speed (6099h.01h/02h)
+	homing_accel: UDINT; // Link to the PDO object Homing acceleration (609Ah)
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,63 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="InverseKinematics" Id="{4ab71d0f-33c5-4435-a8e3-6120a1cfee39}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION InverseKinematics
+VAR_INPUT
+	target_dist: LREAL;
+	target_angle: LREAL;
+END_VAR
+VAR_OUTPUT
+	motor_axis1_angle: DINT;
+	motor_axis2_angle: DINT;
+END_VAR
+VAR
+	(*pre-loaded parameters for calculate robot dimensions*)
+	(*Solve link lenghts analytically. 
+		Preloaded parameter so only perform calculation once, at program initialization.*)
+	// l2: Blade joint distance
+	l2:LREAL := 50.84/2;
+	// l3: Front arm
+	l3:LREAL := 217;
+	x41:LREAL:= 102*COSD(45);
+	y41:LREAL:= 102*SIND(45);
+	x42:LREAL:= 100/SIND(43)*COSD(2);
+	y42:LREAL:= 100/SIND(43)*SIND(2);
+	x4s:LREAL:= x41+x42;
+	y4s:LREAL:= y41+y42;
+	// l4: Rear arm
+	l4:LREAL:=SQRT(EXPT(x4s,2)+EXPT(y4s,2));
+	
+	// The arm's angle from home position, see documentation. 
+	home_angle_deg:LREAL:=81.5+ATAND(y4s/x4s);
+	a3_rad:LREAL:=ACOS((l4*SIND(home_angle_deg)-l2)/l3);
+	center_offset:LREAL:=l3*SIN(a3_rad)-l4*COSD(180-home_angle_deg);
+	// l1: Blade length, from joint to center position, range from 173 mm to 606.5 mm.
+	l1:LREAL:=199.5-center_offset;
+	
+	(*Inverse kinematic calculation variables*)
+	angle1_deg:LREAL;
+	angle2_deg:LREAL;
+	arm_rot_offset_deg:LREAL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Crop target dist in operation range.
+IF target_dist < 173 THEN
+	target_dist:= 173;
+ELSIF target_dist > 630 THEN
+	target_dist:= 630;
+END_IF
+
+angle1_deg:=ATAND(l2/(target_dist-l1));
+angle2_deg:=ACOSD((EXPT(target_dist-l1,2)+EXPT(l2,2)+EXPT(l4,2)-EXPT(l3,2))
+			/(2*SQRT(EXPT(target_dist-l1,2)+EXPT(l2,2))*l4));
+arm_rot_offset_deg:=angle1_deg+angle2_deg-home_angle_deg;
+
+motor_axis1_angle:= TO_DINT((target_angle+arm_rot_offset_deg)/360*1_000_000);
+motor_axis2_angle:= TO_DINT((target_angle-arm_rot_offset_deg)/360*1_000_000);]]></ST>
+    </Implementation>
+    <LineIds Name="InverseKinematics">
+      <LineId Id="142" Count="12" />
+      <LineId Id="65" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

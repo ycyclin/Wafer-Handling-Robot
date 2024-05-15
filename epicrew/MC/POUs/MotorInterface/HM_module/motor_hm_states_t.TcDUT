@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="motor_hm_states_t" Id="{91d752b6-24f9-4ced-ba7c-5f9475e3abbc}">
+    <Declaration><![CDATA[TYPE motor_hm_states_t :
+(
+	START,
+	INPROGRESS,
+	END
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

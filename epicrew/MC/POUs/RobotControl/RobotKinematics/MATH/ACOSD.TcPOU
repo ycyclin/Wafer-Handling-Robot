@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="ACOSD" Id="{cec39ffe-144d-4802-9afb-98ee0757f3ff}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION ACOSD : LREAL
+VAR_INPUT
+	COSVAL:LREAL;
+END_VAR
+VAR
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[ACOSD:=RAD_TO_DEG(ACOS(COSVAL));]]></ST>
+    </Implementation>
+    <LineIds Name="ACOSD">
+      <LineId Id="7" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

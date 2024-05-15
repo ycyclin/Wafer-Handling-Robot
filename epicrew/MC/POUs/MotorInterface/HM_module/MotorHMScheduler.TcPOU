@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MotorHMScheduler" Id="{9d60c211-d1ce-481f-836c-b736a10f8499}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK MotorHMScheduler
+VAR
+	_motor_interface_adr: POINTER TO MotorInterface;
+	_operation_start_time : ULINT;
+	_skd_state : motor_hm_states_t:=motor_hm_states_t.END;
+	
+	_statusword: UINT;
+	_controlword_adr : POINTER TO UINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF _motor_interface_adr^.driver_mode=driver_modes_t.HM AND _motor_interface_adr^.driver_enable THEN
+	_statusword:=_motor_interface_adr^.statusword;
+	CASE _skd_state OF
+		motor_hm_states_t.START:
+			_controlword_adr^.4:=0;
+			_skd_state := motor_hm_states_t.INPROGRESS;
+			_operation_start_time := SYSTIME_MS(); 
+		motor_hm_states_t.INPROGRESS:
+			_controlword_adr^.4:=1;
+			IF(_statusword.10 AND _statusword.12) THEN
+				_skd_state := motor_hm_states_t.END;
+			END_IF
+		motor_hm_states_t.END:
+			_controlword_adr^.4:=0;
+	END_CASE
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="activate" Id="{8cc5a97e-c7f1-4ca1-ab5d-3a91492d741f}">
+      <Declaration><![CDATA[METHOD activate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_motor_interface_adr^.driver_mode:=driver_modes_t.HM;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{91a2c99f-9a07-4b42-8f2b-a4937b8d4f05}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	motor_interface_adr : POINTER TO MotorInterface;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_motor_interface_adr := motor_interface_adr;
+_controlword_adr:=_motor_interface_adr^.controlword_adr;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="get_state" Id="{a1a14cf8-af38-41e2-b5d5-4ea8fded6b64}">
+      <Declaration><![CDATA[METHOD get_state : motor_hm_states_t
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[get_state:=_skd_state;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="start_operation" Id="{8abbab34-2589-4652-b065-0d842b9f71d9}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD start_operation : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_skd_state := motor_hm_states_t.START;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="MotorHMScheduler">
+      <LineId Id="279" Count="1" />
+      <LineId Id="282" Count="12" />
+      <LineId Id="70" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorHMScheduler.activate">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorHMScheduler.FB_init">
+      <LineId Id="7" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorHMScheduler.get_state">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorHMScheduler.start_operation">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

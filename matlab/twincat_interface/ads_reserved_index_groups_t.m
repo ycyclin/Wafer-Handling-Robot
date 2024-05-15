@@ -1,0 +1,30 @@
+classdef ads_reserved_index_groups_t < uint32
+   enumeration
+    PlcRWMX (16416)
+    PlcRWMB (16416)
+    PlcRWRB (16432)
+    PlcRWDB (16448)
+    SymbolTable (61440)
+    SymbolName (61441)
+    SymbolValue (61442)
+    SymbolHandleByName (61443)
+    SymbolValueByName (61444)
+    SymbolValueByHandle (61445)
+    SymbolReleaseHandle (61446)
+    SymbolInfoByName (61447)
+    SymbolVersion (61448)
+    SymbolInfoByNameEx (61449)
+    SymbolDownload (61450)
+    SymbolUpload (61451)
+    SymbolUploadInfo (61452)
+    SymbolNote (61456)
+    IOImageRWIB (61472)
+    IOImageRWIX (61473)
+    IOImageRWOB (61488)
+    IOImageRWOX (61489)
+    IOImageClearI (61504)
+    IOImageClearO (61520)
+    DeviceData (61696)
+   end
+end
+

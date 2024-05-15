@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="RobotInterface" Id="{a0908ebe-2988-47ea-83ed-898f0c4f7e0f}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK RobotInterface
+VAR_INPUT
+END_VAR
+VAR_OUTPUT
+	
+END_VAR
+VAR
+	_initialized : BOOL := FALSE;
+	_robot_enabled : BOOL:= FALSE;
+	_robot_reset_fault: BOOL:=FALSE;
+	_robot_mode : robot_modes_t := robot_modes_t.PP;
+	_motor_interface_adr: POINTER TO ARRAY[0..1] OF MotorInterface;
+	_motor_pp_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorPPScheduler;
+	_motor_csp_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorCSPScheduler;
+	_motor_hm_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorHMScheduler;
+	_ud_rounds:DINT;
+END_VAR
+VAR_IN_OUT
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF (NOT _initialized) AND 	_motor_interface_adr^[0].driver_state<>driver_states_t.Fault AND _motor_interface_adr^[0].driver_state<>driver_states_t.FaultReactionActive AND
+							_motor_interface_adr^[1].driver_state<>driver_states_t.Fault AND _motor_interface_adr^[1].driver_state<>driver_states_t.FaultReactionActive THEN
+	// Start angle calibration. If the motor angles is near the upper/lower bound of encoder, 
+	// there might have values like: feedback_angle[0] = -8_999_999, feedback_angle[1] = 8_999_999. In this case, we need to wrap motor angles
+	// to feedback_angle[0] = 9_000_001. To judge if it happened, we simply compare the robot's feedback positions. If the positions are larger
+	// than 1 round (1_000_000 steps), we can determine that this occasion happens, since robot's mechanical structure limits the two motor's 
+	// angle difference in 1 round.
+	IF ABS(	_motor_interface_adr^[0].feedback_position - _motor_interface_adr^[1].feedback_position) > 1_000_000 THEN
+			_motor_interface_adr^[0].update_rounds(TO_DINT(_motor_interface_adr^[0].feedback_position < _motor_interface_adr^[1].feedback_position)*2-1);
+	END_IF
+	_ud_rounds:=TO_DINT(_motor_interface_adr^[0].feedback_position < _motor_interface_adr^[1].feedback_position)*2-1;
+	_initialized := TRUE;
+END_IF
+IF _robot_enabled THEN
+	_motor_interface_adr^[0].driver_enable:=TRUE;
+	_motor_interface_adr^[1].driver_enable:=TRUE;
+END_IF
+IF _robot_reset_fault THEN
+	IF 	_motor_interface_adr^[0].driver_state=driver_states_t.Fault OR _motor_interface_adr^[0].driver_state=driver_states_t.FaultReactionActive THEN
+		_motor_interface_adr^[0].reset_fault:=TRUE;
+	END_IF
+	IF	_motor_interface_adr^[1].driver_state=driver_states_t.Fault OR _motor_interface_adr^[1].driver_state=driver_states_t.FaultReactionActive THEN
+		_motor_interface_adr^[1].reset_fault:=TRUE;
+	END_IF
+	IF 	_motor_interface_adr^[0].driver_state<>driver_states_t.Fault AND _motor_interface_adr^[0].driver_state<>driver_states_t.FaultReactionActive AND
+		_motor_interface_adr^[1].driver_state<>driver_states_t.Fault AND _motor_interface_adr^[1].driver_state<>driver_states_t.FaultReactionActive THEN
+		_robot_reset_fault:=FALSE;
+		_motor_interface_adr^[0].reset_fault:=FALSE;
+		_motor_interface_adr^[1].reset_fault:=FALSE;
+	END_IF
+END_IF
+]]></ST>
+    </Implementation>
+    <Method Name="FB_init" Id="{0aee3034-7efa-44f4-881f-e2880777c6b2}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	motor_interface_adr: POINTER TO ARRAY[0..1] OF MotorInterface;
+	csp_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorCSPScheduler;
+	pp_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorPPScheduler;
+	hm_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorHMScheduler;
+END_VAR
+
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_motor_interface_adr := motor_interface_adr;
+_motor_pp_scheduler_adr:=pp_scheduler_adr;
+_motor_csp_scheduler_adr:=csp_scheduler_adr;
+_motor_hm_scheduler_adr:=hm_scheduler_adr;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="motor_csp_scheduler_adr" Id="{491eeed7-96f5-430e-a7b9-3d396012bc32}">
+      <Declaration><![CDATA[PROPERTY motor_csp_scheduler_adr : POINTER TO ARRAY[0..1] OF MotorCSPScheduler]]></Declaration>
+      <Get Name="Get" Id="{4f7c342b-f7c8-4470-b9f2-b7e98321b22b}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[motor_csp_scheduler_adr := _motor_csp_scheduler_adr;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="motor_hm_scheduler_adr" Id="{4b593147-9e67-45f1-bcf9-ec666cd7e6a5}">
+      <Declaration><![CDATA[PROPERTY motor_hm_scheduler_adr : POINTER TO ARRAY[0..1] OF MotorHMScheduler]]></Declaration>
+      <Get Name="Get" Id="{3420d6f7-4511-4f8a-af16-f19dd69f4522}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[motor_hm_scheduler_adr := _motor_hm_scheduler_adr;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="motor_interface_adr" Id="{85a12a5a-bf3f-4fdf-b43b-ced934730fc6}">
+      <Declaration><![CDATA[PROPERTY motor_interface_adr : POINTER TO ARRAY[0..1] OF MotorInterface]]></Declaration>
+      <Get Name="Get" Id="{a10a207d-08ba-4eec-890d-b008f9cb2ed3}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[motor_interface_adr:=_motor_interface_adr;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="motor_pp_scheduler_adr" Id="{02646f68-07b6-44c0-99ae-63f3116f79c7}">
+      <Declaration><![CDATA[PROPERTY motor_pp_scheduler_adr : POINTER TO ARRAY[0..1] OF MotorPPScheduler
+]]></Declaration>
+      <Get Name="Get" Id="{90e86628-dc98-4d74-9f03-0d197b131036}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[motor_pp_scheduler_adr := _motor_pp_scheduler_adr;
+]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="robot_enabled" Id="{807c4b18-04f4-457c-93bb-c54430a7106c}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+PROPERTY robot_enabled : BOOL]]></Declaration>
+      <Get Name="Get" Id="{36fdf0ea-8695-49f8-ae35-4a44866f9c72}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[robot_enabled:=_robot_enabled; ]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{7585c530-c96e-4f61-ba54-4569fe217c19}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_robot_enabled:=robot_enabled;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="robot_mode" Id="{47a719f8-ff1c-489e-8c6c-ff8f8a2437a0}">
+      <Declaration><![CDATA[PROPERTY robot_mode : robot_modes_t]]></Declaration>
+      <Get Name="Get" Id="{c5122828-49c7-4df0-8919-64d38f791586}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[robot_mode:=_robot_mode;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{621f1304-c680-4c0e-a6a1-8b8c7c63f31e}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_robot_mode:=robot_mode;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="robot_reset_fault" Id="{e1eb4c50-9906-40ee-ba06-1f9da5f74a86}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+PROPERTY robot_reset_fault : BOOL]]></Declaration>
+      <Get Name="Get" Id="{ef61dd78-bfb7-46b9-ae49-800372081077}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[robot_reset_fault:=_robot_reset_fault;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{228eece0-1287-46fc-b4d3-1e53d6d5d960}">
+        <Declaration><![CDATA[VAR
+END_VAR
+]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_robot_reset_fault:=robot_reset_fault;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <LineIds Name="RobotInterface">
+      <LineId Id="660" Count="30" />
+      <LineId Id="264" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.FB_init">
+      <LineId Id="70" Count="2" />
+      <LineId Id="18" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.motor_csp_scheduler_adr.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.motor_hm_scheduler_adr.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.motor_interface_adr.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.motor_pp_scheduler_adr.Get">
+      <LineId Id="2" Count="0" />
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_enabled.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_enabled.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_mode.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_mode.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_reset_fault.Get">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotInterface.robot_reset_fault.Set">
+      <LineId Id="2" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

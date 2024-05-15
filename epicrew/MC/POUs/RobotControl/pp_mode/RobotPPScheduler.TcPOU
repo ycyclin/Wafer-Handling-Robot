@@ -1,0 +1,117 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="RobotPPScheduler" Id="{9b32e0d7-ad1e-41c9-a248-d2e0e521ae2c}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK RobotPPScheduler
+VAR
+	/// Interfaces
+	_robot_interface_adr: POINTER TO RobotInterface;
+	_motor_pp_scheduler_adr: POINTER TO ARRAY[0..1] OF MotorPPScheduler;
+END_VAR
+VAR
+	/// Runtime variables
+	_robot_state : robot_pp_states_t:=robot_pp_states_t.END;
+	_target_distance: LREAL;
+	_target_angle : LREAL;
+	_motor_angles : ARRAY[0..1] OF DINT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF(_robot_interface_adr^.robot_mode=robot_modes_t.PP  AND _robot_interface_adr^.robot_enabled) THEN
+	CASE _robot_state OF
+		robot_pp_states_t.START:
+			_motor_pp_scheduler_adr^[0].activate();
+			_motor_pp_scheduler_adr^[1].activate();
+			InverseKinematics(	target_dist:=_target_distance, 
+								target_angle:=_target_angle,
+								motor_axis1_angle=>_motor_angles[0],
+								motor_axis2_angle=>_motor_angles[1]);
+			_motor_pp_scheduler_adr^[0].start_operation(
+									target_position:=_motor_angles[0],
+									change_immediately:=TRUE,
+									reference_coordinate:=FALSE,
+									push_operation:=FALSE);
+			_motor_pp_scheduler_adr^[1].start_operation(
+									target_position:=_motor_angles[1],
+									change_immediately:=TRUE,
+									reference_coordinate:=FALSE,
+									push_operation:=FALSE);
+			_robot_state:=robot_pp_states_t.INPROGRESS;
+		robot_pp_states_t.INPROGRESS:
+			IF(_motor_pp_scheduler_adr^[0].get_state()=motor_pp_states_t.END AND _motor_pp_scheduler_adr^[1].get_state()=motor_pp_states_t.END) THEN
+				_robot_state:=robot_pp_states_t.END;
+			END_IF
+	END_CASE
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="activate" Id="{1f76cf63-a8c1-4183-aed0-d741a94f6c79}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD activate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[
+_robot_interface_adr^.robot_mode:=robot_modes_t.PP;
+_robot_state:=robot_pp_states_t.END;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{6e97cf44-629f-4b76-895c-5ab90765f727}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	robot_interface_adr: POINTER TO RobotInterface;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_robot_interface_adr:=robot_interface_adr;
+_motor_pp_scheduler_adr:=_robot_interface_adr^.motor_pp_scheduler_adr;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="get_state" Id="{69a9beaa-8d00-4706-8acd-3d775c010d33}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD get_state : robot_pp_states_t
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[get_state:=_robot_state;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="start_operation" Id="{febac2b4-e500-4d4d-bee1-3bfd170097fa}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD start_operation : BOOL
+VAR_INPUT
+	target_distance: LREAL;
+	target_angle : LREAL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_robot_interface_adr^.robot_enabled:=TRUE;
+_target_distance:=target_distance;
+_target_angle:=target_angle;
+_robot_state:=robot_pp_states_t.START;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="RobotPPScheduler">
+      <LineId Id="456" Count="24" />
+      <LineId Id="24" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotPPScheduler.activate">
+      <LineId Id="10" Count="0" />
+      <LineId Id="5" Count="1" />
+    </LineIds>
+    <LineIds Name="RobotPPScheduler.FB_init">
+      <LineId Id="29" Count="0" />
+      <LineId Id="7" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotPPScheduler.get_state">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="RobotPPScheduler.start_operation">
+      <LineId Id="38" Count="0" />
+      <LineId Id="30" Count="1" />
+      <LineId Id="12" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>

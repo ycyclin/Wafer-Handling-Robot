@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="OutMotorPDO" Id="{618dcf93-122c-48c9-8754-57ce26939a3c}">
+    <Declaration><![CDATA[TYPE OutMotorPDO :
+STRUCT
+	controlword: UINT;
+	target_positon: DINT;
+	motor_op_out: SINT;
+	profile_vel: UDINT := 10_000;
+	profile_accel: UDINT := 300_000;
+	profile_decel: UDINT := 300_000;
+	base_current : INT := 1000;
+END_STRUCT
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

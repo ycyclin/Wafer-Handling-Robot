@@ -1,0 +1,15 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <DUT Name="robot_pp_states_t" Id="{2bdfe769-6619-490a-b1d0-7388b5d4ba47}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE robot_pp_states_t :
+(
+	START,
+	INPROGRESS,
+	END
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,149 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4024.12">
+  <POU Name="MotorPPScheduler" Id="{33dfd4c6-4195-41e6-9061-13970559ee38}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK MotorPPScheduler
+VAR
+	_skd_state: motor_pp_states_t:=motor_pp_states_t.END;
+	_profile_velocity: UDINT:= 10000;
+	_profile_acceleration: UDINT:= 300000;
+	
+	_change_immediately: BOOL;
+	_reference_coordinate: BOOL;
+	_push_operation: BOOL;
+	
+	_target_position: DINT;
+	_motor_interface_adr: POINTER TO MotorInterface;
+	
+	_statusword: UINT;
+	_controlword_adr : POINTER TO UINT;
+	_last_send_time: ULINT;
+	_MSG_SENT:BOOL:=FALSE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF _motor_interface_adr^.driver_mode=driver_modes_t.PP AND _motor_interface_adr^.driver_enable AND _motor_interface_adr^.driver_state<>driver_states_t.Fault AND _motor_interface_adr^.driver_state<>driver_states_t.FaultReactionActive THEN
+	_statusword := _motor_interface_adr^.statusword;
+	_motor_interface_adr^.set_PP_parameters(profile_velocity:=_profile_velocity, profile_acceleration:=_profile_acceleration);
+	_controlword_adr^.5:=_change_immediately;
+	_controlword_adr^.6:=_reference_coordinate;
+	_controlword_adr^.13:=_push_operation;
+	
+	CASE _skd_state OF
+		motor_pp_states_t.START: 
+			_skd_state:=motor_pp_states_t.SENDINGCMD;
+			_controlword_adr^.4:=0;
+			_MSG_SENT:=FALSE;
+		motor_pp_states_t.SENDINGCMD:
+			_controlword_adr^.4:=1;
+			IF NOT _MSG_SENT THEN
+				_last_send_time:=SYSTIME_MS();
+			END_IF
+			_MSG_SENT:=TRUE;
+			IF _statusword.12 THEN
+				_skd_state := motor_pp_states_t.INPROGRESS;
+			ELSIF (SYSTIME_MS()-_last_send_time)>500 THEN
+				_MSG_SENT:=FALSE;
+				_controlword_adr^.4:=0;
+			END_IF
+		motor_pp_states_t.INPROGRESS:
+			_controlword_adr^.4:=1;
+			// 10 is end to target, while 15 is reaches to torque limit (limited by mechanical structure)
+			IF _statusword.10 OR _statusword.15 THEN
+				_skd_state := motor_pp_states_t.END;
+			END_IF
+		motor_pp_states_t.END:
+			_controlword_adr^.4:=0;
+	END_CASE
+	_motor_interface_adr^.target_position:=_target_position;
+END_IF]]></ST>
+    </Implementation>
+    <Method Name="activate" Id="{ccf61a8c-f1c3-4a4b-9059-6aed63841325}">
+      <Declaration><![CDATA[METHOD activate : BOOL
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_motor_interface_adr^.driver_mode:=driver_modes_t.PP;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_init" Id="{24ceeb3a-84c3-4cde-8b7e-80d2cf7a268f}">
+      <Declaration><![CDATA[METHOD FB_init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL; // if TRUE, the retain variables are initialized (warm start / cold start)
+	bInCopyCode : BOOL;  // if TRUE, the instance afterwards gets moved into the copy code (online change)
+	motor_interface_adr : POINTER TO MotorInterface;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_motor_interface_adr := motor_interface_adr;
+_controlword_adr := _motor_interface_adr^.controlword_adr;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="get_state" Id="{66669643-288f-4ab7-b584-70451d57dbaf}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD get_state : motor_pp_states_t
+VAR_INPUT
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[get_state:=_skd_state;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="start_operation" Id="{b514f046-fed4-432d-bdf7-dc77a1ac8372}">
+      <Declaration><![CDATA[{attribute 'TcRpcEnable'}
+METHOD start_operation : BOOL
+VAR_INPUT
+	target_position: LINT;
+	change_immediately: BOOL;
+	reference_coordinate: BOOL;
+	push_operation: BOOL;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_change_immediately:=change_immediately;
+_reference_coordinate:=reference_coordinate;
+_push_operation:=push_operation;
+IF(reference_coordinate) THEN
+	_target_position := TO_DINT(target_position);
+ELSE
+	_target_position := TO_DINT(target_position - _motor_interface_adr^.feedback_position + _motor_interface_adr^.raw_position);
+END_IF
+_skd_state:=motor_pp_states_t.START;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="update_pp_parameter" Id="{f4219e36-5ad5-430a-9db8-b0d5c64f626a}">
+      <Declaration><![CDATA[METHOD update_pp_parameter : BOOL
+VAR_INPUT
+	profile_velocity:UDINT;
+	profile_acceleration:UDINT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_profile_velocity:=profile_velocity;
+_profile_acceleration:=profile_acceleration;]]></ST>
+      </Implementation>
+    </Method>
+    <LineIds Name="MotorPPScheduler">
+      <LineId Id="882" Count="1" />
+      <LineId Id="885" Count="31" />
+      <LineId Id="152" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorPPScheduler.activate">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorPPScheduler.FB_init">
+      <LineId Id="7" Count="0" />
+      <LineId Id="14" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorPPScheduler.get_state">
+      <LineId Id="5" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorPPScheduler.start_operation">
+      <LineId Id="56" Count="7" />
+      <LineId Id="47" Count="0" />
+    </LineIds>
+    <LineIds Name="MotorPPScheduler.update_pp_parameter">
+      <LineId Id="25" Count="0" />
+      <LineId Id="8" Count="0" />
+    </LineIds>
+  </POU>
+</TcPlcObject>
